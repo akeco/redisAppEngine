@@ -1,0 +1,40 @@
+{
+  "name": "admin-panel",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "axios": "^0.17.1",
+    "body-parser": "~1.18.2",
+    "bufferutil": "^3.0.3",
+    "cookie-parser": "~1.4.3",
+    "cors": "^2.8.4",
+    "debug": "~2.6.9",
+    "dotenv": "^4.0.0",
+    "ejs": "~2.5.7",
+    "express": "~4.15.5",
+    "flow-bin": "^0.63.1",
+    "jsonwebtoken": "^7.4.3",
+    "lodash": "^4.17.4",
+    "moment": "^2.20.1",
+    "morgan": "~1.9.0",
+    "nodemon": "^1.14.6",
+    "passport": "^0.3.2",
+    "passport-facebook": "^2.1.1",
+    "password-hash": "^1.2.2",
+    "redis": "^2.8.0",
+    "serve-favicon": "~2.4.5",
+    "socker": "^0.1.6",
+    "socket.io": "^2.0.3",
+    "socket.io-client": "^2.0.3",
+    "url": "^0.11.0",
+    "ws": "^3.3.3"
+  },
+  "devDependencies": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
