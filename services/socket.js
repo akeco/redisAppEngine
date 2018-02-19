@@ -3,6 +3,8 @@ module.exports = (expressServer) => {
 
     const axios = require('axios');
     const redis = require('redis');
+    var QUESTION_COUTER = 0;
+    var QUESTION_COUTER_LIMIT = null;
     require('dotenv').config();
 
     const clientSub = redis.createClient(process.env.REDISPORT, process.env.REDISHOST, {no_ready_check: true});
@@ -13,31 +15,27 @@ module.exports = (expressServer) => {
         console.info("connected",socket.id);
 
         socket.on("join-room", (userId)=>{
-            clientPub.sismember("disabled-users", userId, (err, response)=>{
-                if(!err && response === 0){
-
-                    clientPub.sismember("active-users", userId, (err, response)=>{
-                        if(!err && response === 0){
-                            clientPub.sadd("active-users", userId, (err, response)=>{
-                                if(!err && response === 1){
-                                    console.log("JOINED available-users-room");
-                                    /*
-                                        BEFORE JOINS TO ACTIVE ROOM, CHANGE DEFAULT ID TO CUSTOM ID
-                                     */
-                                    console.log("OLD ID", socket.id);
-                                    socket.id = userId;
-                                    console.log("NEW ID", socket.id);
-                                    socket.join("available-users-room");
-                                }
-                            });
-                        }
-                        else if(response === 1){
-                            socket.emit("user-already-joined");
-                        }
-                    });
+            clientPub.hvals("user-id-alias", (err, response)=>{
+                console.log("ALIASES", response);
+                if(response){
+                    const ifExist = response.indexOf(userId);
+                    if(ifExist == -1){
+                        clientPub.sismember("disabled-users", userId, (err, response)=>{
+                            if(!err && response === 0){
+                                clientPub.sadd("active-users", userId, (err, response)=>{
+                                    if(!err && response === 1){
+                                        console.log("JOINED available-users-room");
+                                        socket.join("available-users-room");
+                                        socket.emit("joined-available-users-room");
+                                        clientPub.hset("user-id-alias", socket.id, userId, redis.print);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    else socket.emit("user-already-joined");
                 }
             });
-
         });
 
         socket.on("send-answer", (data) => {
@@ -50,14 +48,16 @@ module.exports = (expressServer) => {
         });
 
         socket.on("disable-user", (userId) => {
-            if(data){
+            if(userId){
                 socket.leave("available-users-room");
                 clientPub.sadd("disabled-users", userId);
                 clientPub.srem("active-users", userId, (err, response)=>{
                     if(!err && response === 1){
+                        console.log("AVAILABLE ROOM LEAVED");
                         socket.leave("available-users-room");
                     }
                 });
+                clientPub.hdel("user-id-alias", socket.id, redis.print);
                 socket.disconnect();
             }
         });
@@ -65,10 +65,18 @@ module.exports = (expressServer) => {
         socket.once('disconnect', function () {
             console.info("disconnected", socket.id);
             socket.disconnect();
-            clientPub.srem("active-users", socket.id, (err, response)=>{
-                if(!err && response === 1){
-                    socket.leave("available-users-room");
+            clientPub.hget("user-id-alias", socket.id, (err, response)=>{
+                console.log("FROM ACTIVE", response);
+                if(response){
+                    clientPub.srem("active-users", response, (err, response)=>{
+                        if(!err && response === 1){
+                            socket.leave("available-users-room");
+                            clientPub.hdel("user-id-alias", socket.id, redis.print);
+                        }
+                    });
+                    clientPub.hdel("user-id-alias", socket.id, redis.print);
                 }
+
             });
         });
     });
@@ -87,59 +95,85 @@ module.exports = (expressServer) => {
         console.log('Redis connection error');
 
     }).on("message", (channel, data)=>{
-        if(channel === "receive-question"){
-            console.info("SEND DATA TO MOBILE", data);
-            const questionID = JSON.parse(data).id;
-            const date = JSON.parse(data).date;
 
-            setTimeout(()=>{
-                clientPub.zrevrangebyscore([ 'userList', '+inf', '-inf', 'WITHSCORES' ], (error, response)=>{
-                    if(error) return error;
-                    console.info("Fetch", response);
+        switch (channel){
+            case "set-question-limit-number":
+                if(!isNaN(data)) QUESTION_COUTER_LIMIT = data;
+                break;
 
-                    if(response) {
-                        var scoreList = [];
-                        var formatedQuestionResult = [];
-                        response.forEach((result, index)=>{
-                            if((index % 2 != 0 || index == 0) && index != response.length-1){
-                                scoreList.push({
-                                    userID: JSON.parse(result).userId,
-                                    username: JSON.parse(result).username,
-                                    score: response[index+1]
+            case "receive-question":
+                console.info("SEND DATA TO MOBILE", data);
+                const questionID = JSON.parse(data).id;
+                const date = JSON.parse(data).date;
+
+                setTimeout(()=>{
+                    clientPub.zrevrangebyscore([ 'userList', '+inf', '-inf', 'WITHSCORES' ], (error, response)=>{
+                        if(error) return error;
+                        console.info("Fetch", response);
+
+                        if(response) {
+                            var scoreList = [];
+                            var formatedQuestionResult = [];
+                            response.forEach((result, index)=>{
+                                if((index % 2 != 0 || index == 0) && index != response.length-1){
+                                    scoreList.push({
+                                        userID: JSON.parse(result).userId,
+                                        username: JSON.parse(result).username,
+                                        score: response[index+1]
+                                    });
+                                    formatedQuestionResult.push(JSON.parse(result).userId, response[index+1]);
+                                }
+
+                            });
+
+                            if(scoreList.length){
+                                axios.post('http://localhost:3000/api/questionResults',
+                                    {
+                                        scores: scoreList,
+                                        questionID,
+                                        date
+                                    },
+                                ).then((response)=>{
+                                    if(response.status == 200){
+                                        console.info("POST RESPONSE SUCCESS", response.data);
+                                    }
+                                }).catch((err)=>{
+                                    console.info("POST REQUEST ERROR", err);
                                 });
-                                formatedQuestionResult.push(JSON.parse(result).userId, response[index+1]);
                             }
 
+                            if(formatedQuestionResult) clientPub.publish("send-result", formatedQuestionResult.toString());
+                        }
+                    });
+
+                    clientPub.del('userList', function (err, succeeded) {
+                        if(err) throw err;
+                        console.log(succeeded); // will be true if successfull
+                    });
+
+                    if(QUESTION_COUTER == QUESTION_COUTER_LIMIT) {
+                        clientPub.del('disabled-users', function (err, succeeded) {
+                            if(err) throw err;
+                            console.log(succeeded); // will be true if successfull
                         });
 
-                        if(scoreList.length){
-                            axios.post('http://localhost:3000/api/questionResults',
-                                {
-                                    scores: scoreList,
-                                    questionID,
-                                    date
-                                },
-                            ).then((response)=>{
-                                if(response.status == 200){
-                                    console.info("POST RESPONSE SUCCESS", response.data);
-                                }
-                            }).catch((err)=>{
-                                console.info("POST REQUEST ERROR", err);
-                            });
-                        }
+                        clientPub.del('active-users', function (err, succeeded) {
+                            if(err) throw err;
+                            console.log(succeeded); // will be true if successfull
+                        });
 
-                        clientPub.publish("send-result", formatedQuestionResult.toString());
+                        clientPub.del('user-id-alias', function (err, succeeded) {
+                            if(err) throw err;
+                            console.log(succeeded); // will be true if successfull
+                        });
+                        QUESTION_COUTER = 0;
                     }
-                });
 
-                clientPub.del('userList', function (err, succeeded) {
-                    if(err) throw err;
-                    console.log(succeeded); // will be true if successfull
-                });
-
-            }, 10000);
-            io.sockets.to("available-users-room").emit("receive-question", data)
+                }, 10000);
+                io.sockets.to("available-users-room").emit("receive-question", data);
+                QUESTION_COUTER++;
+                break;
         }
-    }).subscribe("receive-question");
+    }).subscribe("receive-question", "set-question-limit-number");
 
 };
