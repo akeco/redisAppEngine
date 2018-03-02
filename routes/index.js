@@ -19,7 +19,7 @@ router.get('/email-validation/:randomID', async (req, res, next)=>{
     try{
         const result = await axios.get(`${process.env.API_HOSTNAME}/api/UserModels?filter[where][emailToken]=${req.params.randomID}`);
         if(result.status == 200 && result.data && result.data.length){
-                const patchResult = await axios.patch(`http://localhost:3000/api/UserModels/${result.data[0].id}`,{
+                const patchResult = await axios.patch(`${process.env.API_HOSTNAME}/api/UserModels/${result.data[0].id}`,{
                     emailVerified: true,
                     emailToken: null
                 });
