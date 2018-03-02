@@ -13,7 +13,7 @@ module.exports = (expressServer) => {
 
     io.sockets.on('connection', function (socket){
         console.info("connected",socket.id);
-        
+
         socket.on("join-room", (userId)=>{
             clientPub.hvals("user-id-alias", (err, response)=>{
                 console.log("ALIASES", response);
