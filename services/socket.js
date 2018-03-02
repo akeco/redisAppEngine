@@ -13,7 +13,7 @@ module.exports = (expressServer) => {
 
     io.sockets.on('connection', function (socket){
         console.info("connected",socket.id);
-
+        
         socket.on("join-room", (userId)=>{
             clientPub.hvals("user-id-alias", (err, response)=>{
                 console.log("ALIASES", response);
@@ -38,6 +38,7 @@ module.exports = (expressServer) => {
             });
         });
 
+
         socket.on("send-answer", (data) => {
             if (data) {
                 clientPub.zadd(["userList", data.score, data.user], (err, response) => {
@@ -60,6 +61,24 @@ module.exports = (expressServer) => {
                 clientPub.hdel("user-id-alias", socket.id, redis.print);
                 socket.disconnect();
             }
+        });
+
+        socket.on("forceDisconnect", ()=>{
+            console.info("disconnected", socket.id);
+            socket.disconnect();
+            clientPub.hget("user-id-alias", socket.id, (err, response)=>{
+                console.log("FROM ACTIVE", response);
+                if(response){
+                    clientPub.srem("active-users", response, (err, response)=>{
+                        if(!err && response === 1){
+                            socket.leave("available-users-room");
+                            clientPub.hdel("user-id-alias", socket.id, redis.print);
+                        }
+                    });
+                    clientPub.hdel("user-id-alias", socket.id, redis.print);
+                }
+
+            });
         });
 
         socket.once('disconnect', function () {
