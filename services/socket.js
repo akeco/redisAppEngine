@@ -66,7 +66,7 @@ module.exports = (expressServer) => {
         });
 
         socket.on("forceDisconnect", ()=>{
-            console.info("disconnected", socket.id);
+            console.info("forced disconnected", socket.id);
             socket.disconnect();
             clientPub.hget("user-id-alias", socket.id, (err, response)=>{
                 console.log("FROM ACTIVE", response);
@@ -127,6 +127,7 @@ module.exports = (expressServer) => {
                 break;
 
             case "clear-user-bans":
+                console.log("REMOVE ALL FROM REDIS");
                 clearAllRedisTables(clientPub);
                 break;
 
@@ -143,8 +144,11 @@ module.exports = (expressServer) => {
                         if(response) {
                             var scoreList = [];
                             var formatedQuestionResult = [];
+
+                            /*
                             response.forEach((result, index)=>{
-                                if((index % 2 != 0 || index == 0) && index != response.length-1){
+                                if((index % 2 == 0 || index == 0) && index != response.length-1){
+
                                     scoreList.push({
                                         userID: JSON.parse(result).userId,
                                         username: JSON.parse(result).username,
@@ -158,8 +162,28 @@ module.exports = (expressServer) => {
                                         userDetails: `${JSON.parse(result).username} ${JSON.parse(result).avatarURL}`
                                     }));
                                 }
-
                             });
+                            */
+
+
+                            response.forEach((result, index)=>{
+                                if(index % 2 == 0){
+                                    console.info("RES ITEM", result);
+                                    scoreList.push({
+                                        userID: JSON.parse(result).userId,
+                                        username: JSON.parse(result).username,
+                                        score: response[index+1]
+                                    });
+                                    //formatedQuestionResult.push(JSON.parse(result).userId, response[index+1]);
+                                    //formatedQuestionResult.push(`${JSON.parse(result).username} ${JSON.parse(result).avatarURL} ${response[index+1]}`);
+                                    formatedQuestionResult.push(JSON.stringify({
+                                        total: JSON.parse(result).total,
+                                        score: response[index+1],
+                                        userDetails: `${JSON.parse(result).username} ${JSON.parse(result).avatarURL}`
+                                    }));
+                                }
+                            });
+
 
                             if(scoreList.length){
                                 axios.post(`${process.env.API_HOSTNAME}/api/questionResults`,
@@ -177,14 +201,17 @@ module.exports = (expressServer) => {
                                 });
                             }
 
-                            if(formatedQuestionResult) clientPub.publish("send-result", formatedQuestionResult.toString('*-*'));
+                            console.log("FORMATED LIST", formatedQuestionResult);
+                            if(formatedQuestionResult) clientPub.publish("send-result", formatedQuestionResult.join('*-*'));
                         }
                     });
+
 
                     clientPub.del('userList', function (err, succeeded) {
                         if(err) throw err;
                         console.log(succeeded); // will be true if successfull
                     });
+
 
                     if(QUESTION_COUTER == QUESTION_COUTER_LIMIT) {
                         clearAllRedisTables(clientPub);

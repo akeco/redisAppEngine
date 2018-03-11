@@ -7,19 +7,19 @@ function getRandomIntInclusive(min, max) {
 const clearAllRedisTables = (clientPub) => {
     clientPub.del('disabled-users', function (err, succeeded) {
         if(err) throw err;
-        console.log(succeeded); // will be true if successfull
+        console.log("REMOVED disabled-users", succeeded); // will be true if successfull
     });
 
     clientPub.del('active-users', function (err, succeeded) {
         if(err) throw err;
-        console.log(succeeded); // will be true if successfull
+        console.log("REMOVED active-users", succeeded); // will be true if successfull
     });
 
     clientPub.del('user-id-alias', function (err, succeeded) {
         if(err) throw err;
-        console.log(succeeded); // will be true if successfull
+        console.log("REMOVED user-id-alias", succeeded); // will be true if successfull
     });
-}
+};
 
 module.exports = {
     getRandomIntInclusive,
