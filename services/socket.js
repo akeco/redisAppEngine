@@ -3,6 +3,7 @@ module.exports = (expressServer) => {
 
     const axios = require('axios');
     const redis = require('redis');
+    const emailVerification = require('../services/email_verification');
     var QUESTION_COUTER = 0;
     var QUESTION_COUTER_LIMIT = null;
     require('dotenv').config();
@@ -81,6 +82,10 @@ module.exports = (expressServer) => {
             });
         });
 
+        socket.on("change-email-token", (userData)=>{
+            if(userData && userData.email && userData.userId) emailVerification(userData.email, userData.userId);
+        });
+
         socket.once('disconnect', function () {
             console.info("disconnected", socket.id);
             socket.disconnect();
@@ -140,13 +145,19 @@ module.exports = (expressServer) => {
                                         username: JSON.parse(result).username,
                                         score: response[index+1]
                                     });
-                                    formatedQuestionResult.push(JSON.parse(result).userId, response[index+1]);
+                                    //formatedQuestionResult.push(JSON.parse(result).userId, response[index+1]);
+                                    //formatedQuestionResult.push(`${JSON.parse(result).username} ${JSON.parse(result).avatarURL} ${response[index+1]}`);
+                                    formatedQuestionResult.push(JSON.stringify({
+                                        total: JSON.parse(result).total,
+                                        score: response[index+1],
+                                        userDetails: `${JSON.parse(result).username} ${JSON.parse(result).avatarURL}`
+                                    }));
                                 }
 
                             });
 
                             if(scoreList.length){
-                                axios.post('http://localhost:3000/api/questionResults',
+                                axios.post(`${process.env.API_HOSTNAME}/api/questionResults`,
                                     {
                                         scores: scoreList,
                                         questionID,
@@ -161,7 +172,7 @@ module.exports = (expressServer) => {
                                 });
                             }
 
-                            if(formatedQuestionResult) clientPub.publish("send-result", formatedQuestionResult.toString());
+                            if(formatedQuestionResult) clientPub.publish("send-result", formatedQuestionResult.toString('*-*'));
                         }
                     });
 
@@ -189,6 +200,7 @@ module.exports = (expressServer) => {
                     }
 
                 }, 10000);
+
                 io.sockets.to("available-users-room").emit("receive-question", data);
                 QUESTION_COUTER++;
                 break;
