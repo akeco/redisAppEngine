@@ -4,6 +4,7 @@ module.exports = (expressServer) => {
     const axios = require('axios');
     const redis = require('redis');
     const emailVerification = require('../services/email_verification');
+    const {clearAllRedisTables} = require('../services/functions');
     var QUESTION_COUTER = 0;
     var QUESTION_COUTER_LIMIT = null;
     require('dotenv').config();
@@ -125,6 +126,10 @@ module.exports = (expressServer) => {
                 if(!isNaN(data)) QUESTION_COUTER_LIMIT = data;
                 break;
 
+            case "clear-user-bans":
+                clearAllRedisTables(clientPub);
+                break;
+
             case "receive-question":
                 console.info("SEND DATA TO MOBILE", data);
                 const questionID = JSON.parse(data).id;
@@ -182,20 +187,7 @@ module.exports = (expressServer) => {
                     });
 
                     if(QUESTION_COUTER == QUESTION_COUTER_LIMIT) {
-                        clientPub.del('disabled-users', function (err, succeeded) {
-                            if(err) throw err;
-                            console.log(succeeded); // will be true if successfull
-                        });
-
-                        clientPub.del('active-users', function (err, succeeded) {
-                            if(err) throw err;
-                            console.log(succeeded); // will be true if successfull
-                        });
-
-                        clientPub.del('user-id-alias', function (err, succeeded) {
-                            if(err) throw err;
-                            console.log(succeeded); // will be true if successfull
-                        });
+                        clearAllRedisTables(clientPub);
                         QUESTION_COUTER = 0;
                     }
 
@@ -205,6 +197,6 @@ module.exports = (expressServer) => {
                 QUESTION_COUTER++;
                 break;
         }
-    }).subscribe("receive-question", "set-question-limit-number");
+    }).subscribe("receive-question", "set-question-limit-number", "clear-user-bans");
 
 };
