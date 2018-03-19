@@ -1,0 +1,26 @@
+{
+  "presets": [
+    "env", "react", "stage-2", "flow"
+  ],
+  "plugins": [
+    "transform-react-jsx",
+    "transform-react-constant-elements",
+    "transform-react-inline-elements",
+    [
+      "direct-import",
+      [
+        "material-ui",
+        "react-router",
+        "react-router-dom"
+      ]
+    ],
+    [
+      "lodash",
+      {
+        "id": [
+          "lodash"
+        ]
+      },
+    ]
+  ]
+}

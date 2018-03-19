@@ -5,20 +5,25 @@ function getRandomIntInclusive(min, max) {
 }
 
 const clearAllRedisTables = (clientPub) => {
-    clientPub.del('disabled-users', function (err, succeeded) {
-        if(err) throw err;
-        console.log("REMOVED disabled-users", succeeded); // will be true if successfull
-    });
+    try{
+        clientPub.del('disabled-users', function (err, succeeded) {
+            if(err) throw err;
+            console.log("REMOVED disabled-users", succeeded); // will be true if successfull
+        });
 
-    clientPub.del('active-users', function (err, succeeded) {
-        if(err) throw err;
-        console.log("REMOVED active-users", succeeded); // will be true if successfull
-    });
+        clientPub.del('active-users', function (err, succeeded) {
+            if(err) throw err;
+            console.log("REMOVED active-users", succeeded); // will be true if successfull
+        });
 
-    clientPub.del('user-id-alias', function (err, succeeded) {
-        if(err) throw err;
-        console.log("REMOVED user-id-alias", succeeded); // will be true if successfull
-    });
+        clientPub.del('user-id-alias', function (err, succeeded) {
+            if(err) throw err;
+            console.log("REMOVED user-id-alias", succeeded); // will be true if successfull
+        });
+    }
+    catch(err){
+        console.log("CLEAR USERS FROM CACHE REDIS DB ", err);
+    }
 };
 
 module.exports = {

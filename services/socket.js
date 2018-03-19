@@ -67,7 +67,6 @@ module.exports = (expressServer) => {
 
         socket.on("forceDisconnect", ()=>{
             console.info("forced disconnected", socket.id);
-            socket.disconnect();
             clientPub.hget("user-id-alias", socket.id, (err, response)=>{
                 console.log("FROM ACTIVE", response);
                 if(response){
@@ -79,8 +78,8 @@ module.exports = (expressServer) => {
                     });
                     clientPub.hdel("user-id-alias", socket.id, redis.print);
                 }
-
             });
+            socket.disconnect();
         });
 
         socket.on("change-email-token", (userData)=>{
@@ -145,27 +144,6 @@ module.exports = (expressServer) => {
                             var scoreList = [];
                             var formatedQuestionResult = [];
 
-                            /*
-                            response.forEach((result, index)=>{
-                                if((index % 2 == 0 || index == 0) && index != response.length-1){
-
-                                    scoreList.push({
-                                        userID: JSON.parse(result).userId,
-                                        username: JSON.parse(result).username,
-                                        score: response[index+1]
-                                    });
-                                    //formatedQuestionResult.push(JSON.parse(result).userId, response[index+1]);
-                                    //formatedQuestionResult.push(`${JSON.parse(result).username} ${JSON.parse(result).avatarURL} ${response[index+1]}`);
-                                    formatedQuestionResult.push(JSON.stringify({
-                                        total: JSON.parse(result).total,
-                                        score: response[index+1],
-                                        userDetails: `${JSON.parse(result).username} ${JSON.parse(result).avatarURL}`
-                                    }));
-                                }
-                            });
-                            */
-
-
                             response.forEach((result, index)=>{
                                 if(index % 2 == 0){
                                     console.info("RES ITEM", result);
@@ -174,8 +152,6 @@ module.exports = (expressServer) => {
                                         username: JSON.parse(result).username,
                                         score: response[index+1]
                                     });
-                                    //formatedQuestionResult.push(JSON.parse(result).userId, response[index+1]);
-                                    //formatedQuestionResult.push(`${JSON.parse(result).username} ${JSON.parse(result).avatarURL} ${response[index+1]}`);
                                     formatedQuestionResult.push(JSON.stringify({
                                         total: JSON.parse(result).total,
                                         score: response[index+1],
